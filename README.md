@@ -1,245 +1,94 @@
-# Reservas Labs API
+# Post-contenido — Unidad 5: Integración en Aplicaciones Web
 
-API REST desarrollada con Spring Boot para la gestión de reservas de laboratorios universitarios.
+## Descripción
 
-El proyecto implementa una arquitectura en capas, utilizando Spring Data JPA para el acceso a datos y H2 como base de datos en memoria.
+Repositorio del post-contenido de la Unidad 5 de Patrones de Diseño de Software. Contiene un proyecto Spring Boot para la gestión de reservas de laboratorios de cómputo, desarrollado en dos partes: una API REST organizada por capas y una interfaz web MVC con Thymeleaf que reutiliza la misma lógica de negocio.
 
-## Tecnologías utilizadas
+## Parte 1 — Repository, Service y Controller REST
 
-* Java 17
-* Spring Boot 3.2.x
-* Maven
-* Spring Web
-* Spring Data JPA
-* H2 Database
-* Lombok
-* Jakarta Validation
+La capa de persistencia utiliza `LaboratorioRepository` y `ReservaRepository`, interfaces que extienden `JpaRepository`. `ReservaRepository` incorpora una consulta JPQL para detectar reservas que se solapan en un mismo laboratorio.
 
-## Estructura del proyecto
+`ReservaService` concentra las reglas de negocio relacionadas con la disponibilidad, el horario de atención, la duración de las reservas y su cancelación. Los controladores `LaboratorioController` y `ReservaController` exponen los endpoints REST bajo `/api/laboratorios` y `/api/reservas`.
 
-```text
-reservas-labs-api/
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   └── com/universidad/reservaslabs/
-│   │   │       ├── model/
-│   │   │       ├── repository/
-│   │   │       ├── service/
-│   │   │       ├── exception/
-│   │   │       ├── controller/
-│   │   │       └── ReservasLabsApiApplication.java
-│   │   └── resources/
-│   │       └── application.properties
-│   └── test/
-├── pom.xml
-├── mvnw
-├── mvnw.cmd
-└── .mvn/
+La aplicación utiliza H2 como base de datos en memoria. Las entidades y los repositorios se encuentran en `model/` y `repository/`; la lógica de negocio, en `service/`; el manejo de errores, en `exception/`; y los endpoints REST, en `controller/`.
+
+## Parte 2 — Vista MVC con Thymeleaf
+
+`ReservaWebController` expone la interfaz web bajo `/reservas`, con una vista para listar las reservas y otra para registrar nuevas. El controlador inyecta la misma clase `ReservaService` utilizada por la API REST, evitando duplicar las reglas de negocio.
+
+Las plantillas `templates/reservas/lista.html` y `templates/reservas/nueva.html` permiten consultar, crear y cancelar reservas desde el navegador.
+
+`ReservaWebExceptionHandler` maneja las excepciones de dominio utilizadas por el servicio y presenta sus mensajes mediante redirecciones y atributos flash. De esta manera, la API REST conserva sus respuestas JSON y la interfaz MVC presenta mensajes comprensibles para el usuario.
+
+## Cómo ejecutar
+
+Desde la raíz del proyecto:
+
+```bash
+mvn clean package
+mvn spring-boot:run
 ```
 
-## Requisitos
+También se puede utilizar el Maven Wrapper incluido en el repositorio:
 
-Para ejecutar el proyecto se requiere:
-
-* Java JDK 17
-* Maven o Maven Wrapper
-* Git
-
-Verificar la versión de Java:
-
-```powershell
-java -version
+```bash
+./mvnw clean package
+./mvnw spring-boot:run
 ```
 
-## Ejecución del proyecto
-
-Desde la carpeta raíz del proyecto se puede utilizar el Maven Wrapper incluido:
+En Windows PowerShell:
 
 ```powershell
+.\mvnw.cmd clean package
 .\mvnw.cmd spring-boot:run
 ```
 
-También es posible compilar y ejecutar las pruebas mediante:
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-Cuando la aplicación se inicia correctamente, queda disponible en:
-
-```text
-http://localhost:8080
-```
-
-## Base de datos H2
-
-El proyecto utiliza H2 como base de datos en memoria.
-
-La consola H2 está disponible en:
-
-```text
-http://localhost:8080/h2-console
-```
-
-Configuración:
-
-```text
-JDBC URL: jdbc:h2:mem:reservas_labs_db
-Usuario: sa
-Contraseña:
-```
-
-La configuración utiliza `create-drop`, por lo que los datos se generan durante la ejecución y se eliminan al detener la aplicación.
-
-## Endpoints REST
-
-### Laboratorios
-
-**Listar laboratorios**
-
-```http
-GET /api/laboratorios
-```
-
-**Obtener laboratorio por ID**
-
-```http
-GET /api/laboratorios/{id}
-```
-
-**Crear laboratorio**
-
-```http
-POST /api/laboratorios
-```
-
-Ejemplo:
-
-```json
-{
-  "nombre": "Laboratorio de Sistemas 1",
-  "ubicacion": "Bloque A - 201",
-  "capacidad": 30,
-  "tipo": "COMPUTO"
-}
-```
-
-### Reservas
-
-**Listar reservas**
-
-```http
-GET /api/reservas
-```
-
-**Obtener reserva por ID**
-
-```http
-GET /api/reservas/{id}
-```
-
-**Consultar reservas por laboratorio**
-
-```http
-GET /api/reservas/laboratorio/{laboratorioId}
-```
-
-**Crear reserva**
-
-```http
-POST /api/reservas
-```
-
-Ejemplo:
-
-```json
-{
-  "laboratorio": {
-    "id": 1
-  },
-  "nombreSolicitante": "Eileen Balaguera",
-  "correoSolicitante": "eileen@example.com",
-  "inicio": "2026-08-10T09:00:00",
-  "fin": "2026-08-10T11:00:00",
-  "motivo": "Clase de Ingeniería de Sistemas"
-}
-```
-
-**Cancelar reserva**
-
-```http
-DELETE /api/reservas/{id}
-```
-
-## Reglas de negocio
-
-El sistema implementa las siguientes reglas:
-
-1. El laboratorio asociado a una reserva debe existir.
-2. La fecha y hora de finalización debe ser posterior a la fecha y hora de inicio.
-3. La duración mínima de una reserva es de 30 minutos.
-4. La duración máxima es de 3 horas.
-5. Las reservas deben realizarse entre las 07:00 y las 21:00.
-6. No se permiten reservas solapadas para un mismo laboratorio.
-7. Las reservas canceladas no generan conflictos de disponibilidad.
-8. Una reserva cuyo horario de inicio ya pasó no puede ser cancelada.
+* API REST de reservas: `http://localhost:8080/api/reservas`
+* API REST de laboratorios: `http://localhost:8080/api/laboratorios`
+* Interfaz web: `http://localhost:8080/reservas`
+* Formulario de reserva: `http://localhost:8080/reservas/nueva`
 
 ## Decisiones de diseño
 
-### Punto de decisión 1: Arquitectura en capas
+### Punto de decisión 1 — Ubicación de la validación de solapamiento
 
-Se implementó una arquitectura en capas para separar las responsabilidades de la aplicación.
+La consulta que identifica las reservas que se cruzan en un mismo laboratorio se encuentra en `ReservaRepository`, porque requiere consultar los datos persistidos. La decisión de aceptar o rechazar una reserva se encuentra en `ReservaService`, que utiliza el resultado de la consulta para aplicar la regla de negocio.
 
-La capa `controller` recibe las solicitudes HTTP y construye las respuestas. La capa `service` concentra las reglas de negocio relacionadas con las reservas. La capa `repository` gestiona el acceso a la base de datos mediante Spring Data JPA y la capa `model` representa las entidades del dominio.
+Si el controlador llamara directamente a `buscarSolapamientos()`, asumiría responsabilidades propias de la lógica de negocio y acoplaría la presentación con la persistencia. Mantener la decisión en el servicio permite que tanto REST como MVC apliquen la misma regla.
 
-Esta separación permite mantener una distribución clara de responsabilidades y facilita el mantenimiento y evolución del sistema.
+### Punto de decisión 2 — Reglas con y sin apoyo del Repository
 
-`ReservaController` delega las operaciones que requieren reglas de negocio a `ReservaService`, especialmente la creación y cancelación de reservas.
+La detección de solapamientos necesita consultar las reservas existentes, por lo que requiere el apoyo del repositorio. En cambio, las validaciones del horario de atención y de la duración se resuelven con los valores de inicio y fin recibidos, sin consultar la base de datos.
 
-Por otro lado, `LaboratorioController` utiliza directamente `LaboratorioRepository` para las operaciones CRUD básicas, debido a que estas operaciones no requieren una lógica de negocio adicional.
+Por esta razón, estas reglas se implementan en `ReservaService`: centraliza las validaciones y evita que los controladores tengan que conocer o duplicar su funcionamiento.
 
-### Punto de decisión 2: Validación de solapamientos
+### Punto de decisión 3 — Cómo comparten Service el Controller MVC y el REST
 
-La disponibilidad de los laboratorios se valida mediante una consulta específica implementada en `ReservaRepository`.
+`ReservaController` y `ReservaWebController` reciben `ReservaService` mediante inyección de dependencias. Spring administra el servicio como un bean compartido, por lo que ambas superficies utilizan la misma implementación de las reglas de negocio.
 
-El método:
+Crear un segundo servicio para MVC duplicaría la lógica de validación y podría producir comportamientos diferentes si una regla se modifica en una sola de las implementaciones. La reutilización mantiene la consistencia y facilita el mantenimiento.
 
-```java
-buscarSolapamientos(
-    Long laboratorioId,
-    LocalDateTime inicio,
-    LocalDateTime fin
-)
-```
+### Punto de decisión 4 — Manejo de errores consistente entre MVC y REST
 
-permite consultar directamente las reservas que se intersectan con el intervalo solicitado.
+Ambas superficies utilizan las excepciones de dominio `ReservaConflictException` y `RecursoNoEncontradoException`, pero presentan los errores de manera diferente. `GlobalRestExceptionHandler` gestiona las respuestas de la API REST, mientras que `ReservaWebExceptionHandler`, restringido a `ReservaWebController` mediante `assignableTypes`, utiliza redirecciones y atributos flash para mostrar los mensajes en las vistas Thymeleaf.
 
-La consulta excluye las reservas cuyo estado sea `CANCELADA`.
+No se utiliza un único `@RestControllerAdvice` para ambas superficies porque su comportamiento está orientado a respuestas REST, mientras que MVC necesita resolver una vista o redirigir al navegador. Separar los manejadores por superficie evita mezclar responsabilidades y conserva el mismo vocabulario de errores del dominio.
 
-La decisión de utilizar esta consulta evita recuperar todas las reservas para realizar la validación en memoria. El repositorio se encarga de consultar los datos y `ReservaService` interpreta el resultado para aplicar la regla de negocio.
+## Herramientas utilizadas
 
-Cuando existe una reserva activa que se solapa con el horario solicitado, el servicio genera un `ReservaConflictException`.
+* Java 17
+* Spring Boot 3.2
+* Spring Data JPA
+* H2 Database
+* Thymeleaf
+* Apache Maven
+* Postman y PowerShell para pruebas de endpoints
+* Git y GitHub
 
-## Commits principales
+## Conclusiones
 
-El desarrollo de la Parte 1 se organizó mediante commits descriptivos:
+El desarrollo permitió aplicar una arquitectura por capas, separando la persistencia, las reglas de negocio y la presentación. La principal decisión consistió en ubicar cada regla en la capa adecuada, diferenciando las consultas que requieren acceso a los datos de las validaciones que pueden resolverse en el servicio. La incorporación de Thymeleaf permitió reutilizar la lógica existente sin duplicar el servicio. Finalmente, se mantuvo un manejo de errores coherente en REST y MVC, adaptando la respuesta a las necesidades de cada interfaz.
 
-```text
-feat: inicializar reservas-labs-api con entidades y repositories
-
-feat(service): implementar ReservaService con reglas de solapamiento y horario
-
-feat(controller): exponer endpoints REST de laboratorios y reservas
-```
-
-## Parte 2 — MVC con Thymeleaf
-
-Esta sección será completada al finalizar la Parte 2.
-
-En la Parte 2 se incorporará la interfaz web utilizando Spring MVC y Thymeleaf, manteniendo la separación de responsabilidades definida en la arquitectura del proyecto.
-
-Se documentarán las vistas, controladores MVC, formularios, navegación e integración con la capa de servicio.
 
 ## Autor
 

@@ -32,13 +32,21 @@ public class ReservaWebController {
         model.addAttribute("laboratorios", laboratorioRepo.findAll());
         return "reservas/nueva";
     }
+@PostMapping
+public String crear(@ModelAttribute Reserva reserva,
+                    @RequestParam Long laboratorioId,
+                    RedirectAttributes redirect) {
 
-    @PostMapping
-    public String crear(@ModelAttribute Reserva reserva, RedirectAttributes redirect) {
-        service.crear(reserva);
-        redirect.addFlashAttribute("mensaje", "Reserva creada correctamente");
-        return "redirect:/reservas";
-    }
+    reserva.setLaboratorio(
+        laboratorioRepo.findById(laboratorioId)
+            .orElseThrow(() -> new RuntimeException("Laboratorio no encontrado"))
+    );
+
+    service.crear(reserva);
+
+    redirect.addFlashAttribute("mensaje", "Reserva creada correctamente");
+    return "redirect:/reservas";
+}
 
     @PostMapping("/{id}/cancelar")
     public String cancelar(@PathVariable Long id, RedirectAttributes redirect) {
